@@ -1,0 +1,20 @@
+*           text=auto
+
+
+# enforce linux line endings
+*.md        text eol=lf
+*.js        text eol=lf
+*.json      text eol=lf
+*.ts        text eol=lf
+*.sh        text eol=lf
+*.yml       text eol=lf
+
+# dotfiles configurations
+.*          text eol=lf
+
+# Graphics
+*.png       binary
+*.jpg       binary
+*.gif       binary
+# SVG treated as an asset (binary) by default. You can change it to text, if necessary
+*.svg       binary

@@ -1,0 +1,29 @@
+{
+  "name": "postfix-track-sasl-username",
+  "version": "1.0.0",
+  "description": "Node Script to track and count emails sent by SASL username",
+  "main": "postfix-track-sasl-username.js",
+  "dependencies": {
+  },
+  "devDependencies": {
+    "eslint": "^4.19.1",
+    "eslint-config-airbnb-base": "^12.1.0",
+    "eslint-plugin-import": "^2.11.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/carlos-algms/postfix-track-sasl-username.git"
+  },
+  "keywords": [
+    "postfix",
+    "sasl",
+    "username",
+    "track"
+  ],
+  "author": "Carlos A. Gomes <carlos.algms@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/carlos-algms/postfix-track-sasl-username/issues"
+  },
+  "homepage": "https://github.com/carlos-algms/postfix-track-sasl-username#readme"
+}

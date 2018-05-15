@@ -1,39 +1,31 @@
-var readline = require('readline');
-var fs = require('fs');
+const { createInterface } = require('readline');
+const { createReadStream } = require('fs');
 
-var FILE_PATH = '/var/log/' + (process.argv[2] || 'mail.log');
-// var FILE_PATH = './' + (process.argv[2] || 'mail.log');
-var users = [];
-var lineReader = readline.createInterface({ input: fs.createReadStream(FILE_PATH) });
+const targetFile = process.argv[2] || 'mail.log';
+const FILE_PATH = `/var/log/${targetFile}`;
+const users = [];
+const findUsersLineReader = createInterface({ input: createReadStream(FILE_PATH) });
 
-console.log('File path: ', FILE_PATH);
+console.info('File path: ', FILE_PATH);
 
-lineReader.on('line', function onLineUsers(line) {
-  var saslUsername = line.match(/sasl_username=(.*)/);
-  var user;
-  var code;
+findUsersLineReader.on('line', (line) => {
+  const saslUsername = line.match(/sasl_username=(.*)/);
+
   if (!saslUsername) {
     return;
   }
 
-  user = getUser(saslUsername[1]);
-  user.count++;
+  const user = getUser(saslUsername[1]);
+  user.count += 1;
 
-  code = line.match(/[A-Z0-9]{10}/);
+  const code = line.match(/[A-Z0-9]{10}/);
   user.codes.push(code[0]);
 });
 
-lineReader.on('close', readOccurrences);
+findUsersLineReader.on('close', readOccurrences);
 
 function getUser(username) {
-  var user = null;
-  users.some(function someUser(u) {
-    if (u.name === username) {
-      user = u;
-      return true;
-    }
-    return false;
-  });
+  let user = users.find(currentUser => currentUser.name === username);
 
   if (!user) {
     user = {
@@ -43,11 +35,12 @@ function getUser(username) {
       codes: [],
       ips: [],
       froms: [],
-      tos: []
+      tos: [],
     };
 
     users.push(user);
   }
+
   return user;
 }
 
@@ -56,41 +49,39 @@ function getUser(username) {
 
 
 function readOccurrences() {
-  var postfixDataRegex = /([a-z]{2}\s+\d{1,2} \d{2}:\d{2}:\d{2}) .* postfix\/(.*)\[(\d+)\]/i;
-  var hostIpRegex = /client=(.*?)\[([0-9\.]+)\]/i;
-  var emailToRegex = /to=<(.*?)>/i;
-  var emailFromRegex = /from=<(.*?)>/i;
+  const postfixDataRegex = /([a-z]{2}\s+\d{1,2} \d{2}:\d{2}:\d{2}) .* postfix\/(.*)\[(\d+)\]/i;
+  const hostIpRegex = /client=(.*?)\[([0-9.]+)\]/i;
+  const emailToRegex = /to=<(.*?)>/i;
+  const emailFromRegex = /from=<(.*?)>/i;
 
-  lineReader = readline.createInterface({ input: fs.createReadStream(FILE_PATH) });
+  const lineReader = createInterface({ input: createReadStream(FILE_PATH) });
 
-  lineReader.on('line', function onLineOcurrence(line) {
-    var matchedCode = line.match(/[A-Z0-9]{10}/);
-    var code;
+  lineReader.on('line', (line) => {
+    const matchedCode = line.match(/[A-Z0-9]{10}/);
+
     if (!matchedCode || !matchedCode[0]) {
       return;
     }
 
-    code = matchedCode[0];
-    users.forEach(function onEachUser(user) {
-      var matchedData;
-      var occurrence;
-      var hostIp;
-      var email;
-
-      if (user.codes.indexOf(code) === -1) {
+    const code = matchedCode[0];
+    users.forEach((user) => {
+      if (user.codes.includes(code)) {
         return;
       }
 
-      matchedData = line.match(postfixDataRegex);
+      const matchedData = line.match(postfixDataRegex);
 
       if (!matchedData) {
-        console.log('error: ', line);
+        console.error('error: ', line);
         return;
       }
 
-      occurrence = getOccurrence(code, matchedData, user);
+      const occurrence = getOccurrence(code, matchedData, user);
+      const logType = matchedData[2];
+      let hostIp;
+      let email;
 
-      switch (matchedData[2]) {
+      switch (logType) {
         case 'smtpd':
           hostIp = line.match(hostIpRegex);
 
@@ -107,7 +98,7 @@ function readOccurrences() {
             occurrence.from.push(email[1]);
             userAddProp('froms', user, email[1]);
           } else if (line.indexOf('removed') === -1) {
-            console.log('************** email FROM not found: ', line);
+            console.error('************** email FROM not found: ', line);
           }
           break;
 
@@ -118,7 +109,7 @@ function readOccurrences() {
             occurrence.to.push(email[1]);
             userAddProp('tos', user, email[1]);
           } else {
-            console.log('************** email TO not found: ', line);
+            console.error('************** email TO not found: ', line);
           }
           break;
 
@@ -128,33 +119,24 @@ function readOccurrences() {
   });
 
 
-  lineReader.on('close', function onCloseOcurrence() {
-    ordenar();
+  lineReader.on('close', () => {
+    sort();
     printResult();
     process.exit(0);
   });
 
 
   function getOccurrence(code, matchedData, user) {
-    var occurrence = null;
-
-    user.occurrences.some(function someOcurrence(oc) {
-      if (oc.code === code) {
-        occurrence = oc;
-        return true;
-      }
-      return false;
-    });
+    let occurrence = user.occurrences.find(oc => oc.code === code);
 
     if (!occurrence) {
       occurrence = {
-        code: code,
+        code,
         date: matchedData[1],
-        // module: matchedData[2],
         pid: matchedData[3],
         from: [],
         to: [],
-        ip: []
+        ip: [],
       };
 
       user.occurrences.push(occurrence);
@@ -167,8 +149,8 @@ function readOccurrences() {
 // ///////////////////////////
 
 
-function ordenar() {
-  users.sort(function usersSort(a, b) {
+function sort() {
+  users.sort((a, b) => {
     if (a.tos.length > b.tos.length) {
       return -1;
     }
@@ -188,12 +170,12 @@ function userAddProp(prop, user, data) {
 }
 
 function printResult() {
-  users.forEach(function printUser(user) {
-    console.log('=====================================\n');
-    console.log(user.count, user.name);
-    console.log('\n ** FROM:\n   ', user.froms.join('\n    '));
-    console.log('\n ** IPs:\n   ', user.ips.join('\n    '));
-    console.log('\n ** TO:', user.tos.length, '\n   ', user.tos.join('\n    '));
-    console.log('\n\n\n\n');
+  users.forEach((user) => {
+    console.info('=====================================\n');
+    console.info(user.count, user.name);
+    console.info('\n ** FROM:\n   ', user.froms.join('\n    '));
+    console.info('\n ** IPs:\n   ', user.ips.join('\n    '));
+    console.info('\n ** TO:', user.tos.length, '\n   ', user.tos.join('\n    '));
+    console.info('\n\n\n\n');
   });
 }
